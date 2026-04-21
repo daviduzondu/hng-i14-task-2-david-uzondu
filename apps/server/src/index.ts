@@ -37,91 +37,90 @@ class AppError extends Error {
 }
 
 
-// app.post("/api/profiles",
-//  (req: Request, _res: Response, next: NextFunction) => {
-//   if (!req.body || req.body.name === undefined) {
-//    return _res.status(400).json({
-//     status: "error",
-//     message: "'name' is required in request body"
-//    });
-//   }
+app.post("/api/profiles",
+ (req: Request, _res: Response, next: NextFunction) => {
+  if (!req.body || req.body.name === undefined) {
+   return _res.status(400).json({
+    status: "error",
+    message: "'name' is required in request body"
+   });
+  }
 
-//   if (req.body.name === "") {
-//    return _res.status(400).json({
-//     status: "error",
-//     message: "'name' cannot be empty"
-//    });
-//   }
+  if (req.body.name === "") {
+   return _res.status(400).json({
+    status: "error",
+    message: "'name' cannot be empty"
+   });
+  }
 
-//   if (isNaN(Number(req.body.name)) === false) {
-//    return _res.status(422).json({
-//     status: "error",
-//     message: "'name' must not be a number"
-//    });
-//   }
-//   next()
-//  },
-//  async (req: Request<{}, {}, { name: string }, {}>, res: Response<SuccessResponse | ErrorResponse>) => {
-//   const [genderRes, agifyRes, nationalizeRes]: [AxiosResponse<GenderizeResponse>, AxiosResponse<AgifyResponse>, AxiosResponse<NationalizeResponse>] = await Promise.all([
-//    axios.get(`https://api.genderize.io/?name=${req.body.name}`),
-//    axios.get(`https://api.agify.io/?name=${req.body.name}`),
-//    axios.get(`https://api.nationalize.io/?name=${req.body.name}`),
-//   ])
+  if (isNaN(Number(req.body.name)) === false) {
+   return _res.status(422).json({
+    status: "error",
+    message: "'name' must not be a number"
+   });
+  }
+  next()
+ },
+ async (req: Request<{}, {}, { name: string }, {}>, res: Response<SuccessResponse | ErrorResponse>) => {
+  const [genderRes, agifyRes, nationalizeRes]: [AxiosResponse<GenderizeResponse>, AxiosResponse<AgifyResponse>, AxiosResponse<NationalizeResponse>] = await Promise.all([
+   axios.get(`https://api.genderize.io/?name=${req.body.name}`),
+   axios.get(`https://api.agify.io/?name=${req.body.name}`),
+   axios.get(`https://api.nationalize.io/?name=${req.body.name}`),
+  ])
 
-//   if (genderRes.status !== 200 || agifyRes.status !== 200 || nationalizeRes.status !== 200) throw new AppError({
-//    message: `${genderRes.status !== 200 ? "Genderize" : agifyRes.status !== 200 ? "Agify" : nationalizeRes.status !== 200 ? "Nationalize" : "classification"} returned an invalide response`,
-//    code: 502
-//   });
+  if (genderRes.status !== 200 || agifyRes.status !== 200 || nationalizeRes.status !== 200) throw new AppError({
+   message: `${genderRes.status !== 200 ? "Genderize" : agifyRes.status !== 200 ? "Agify" : nationalizeRes.status !== 200 ? "Nationalize" : "classification"} returned an invalide response`,
+   code: 502
+  });
 
-//   let existingUser = await db.selectFrom('profile')
-//    .where((eb) => eb(sql`LOWER(TRIM(name))`, "=", req.body.name.toLowerCase().trim()))
-//    .selectAll()
-//    .executeTakeFirst();
+  let existingUser = await db.selectFrom('profile')
+   .where((eb) => eb(sql`LOWER(TRIM(name))`, "=", req.body.name.toLowerCase().trim()))
+   .selectAll()
+   .executeTakeFirst();
 
-//   delete existingUser?.updated_at;
+  delete existingUser?.updated_at;
 
-//   if (existingUser) {
-//    return res.status(200).json({
-//     message: "Profile already exists",
-//     data: existingUser,
-//     status: 'success'
-//    })
-//   }
+  if (existingUser) {
+   return res.status(200).json({
+    message: "Profile already exists",
+    data: existingUser,
+    status: 'success'
+   })
+  }
 
-//   if (genderRes.data.count === 0 || genderRes.data.gender === null || !agifyRes.data.age || nationalizeRes.data.country.length === 0) return res.status(422).json({
-//    status: 'error',
-//    message: "No prediction available for the provided name"
-//   });
+  if (genderRes.data.count === 0 || genderRes.data.gender === null || !agifyRes.data.age || nationalizeRes.data.country.length === 0) return res.status(422).json({
+   status: 'error',
+   message: "No prediction available for the provided name"
+  });
 
-//   const newProfile = await db.insertInto('profile').values({
-//    age: agifyRes.data.age,
-//    age_group: ((age: number): ValueExpression<DB, "profile", AgeGroup> => {
-//     if (age <= 12) return "child";
-//     if (age <= 19) return "teenager";
-//     if (age <= 59) return "adult";
-//     return 'senior'
-//    })(agifyRes.data.age),
-//    country_id: nationalizeRes.data.country.reduce((a, b) =>
-//     a.probability > b.probability ? a : b
-//    ).country_id,
-//    country_probability: Math.max(...nationalizeRes.data.country.map((c,) => c.probability)),
-//    gender: genderRes.data.gender,
-//    gender_probability: genderRes.data.probability,
-//    name: req.body.name,
-//    sample_size: genderRes.data.count
-//   })
-//    .returningAll()
-//    .executeTakeFirst();
+  const newProfile = await db.insertInto('profile').values({
+   age: agifyRes.data.age,
+   age_group: ((age: number): ValueExpression<DB, "profile", AgeGroup> => {
+    if (age <= 12) return "child";
+    if (age <= 19) return "teenager";
+    if (age <= 59) return "adult";
+    return 'senior'
+   })(agifyRes.data.age),
+   country_id: nationalizeRes.data.country.reduce((a, b) =>
+    a.probability > b.probability ? a : b
+   ).country_id,
+   country_probability: Math.max(...nationalizeRes.data.country.map((c,) => c.probability)),
+   gender: genderRes.data.gender,
+   gender_probability: genderRes.data.probability,
+   name: req.body.name,
+  })
+   .returningAll()
+   .executeTakeFirst();
 
-//   delete newProfile.updated_at;
+  delete newProfile.updated_at;
 
 
-//   return res.status(StatusCodes.CREATED)
-//    .json({
-//     status: 'success',
-//     data: newProfile
-//    });
-//  });
+  return res.status(StatusCodes.CREATED)
+   .json({
+    status: 'success',
+    data: newProfile
+   });
+ });
 
 app.get('/api/profiles/:id', async (req: Request<{ id?: string }, {}, {}, {}>, res: Response<SuccessResponse | ErrorResponse>, next) => {
  const id = req.params.id;
