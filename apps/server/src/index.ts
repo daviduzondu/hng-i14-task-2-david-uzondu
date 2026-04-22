@@ -1,5 +1,5 @@
 import { db } from "@/db/db";
-import type { AgeGroup, DB, Gender } from "@/db/generated/types";
+import type { AgeGroup, DB } from "@/db/generated/types";
 import type { AgifyResponse, ErrorResponse, GenderizeResponse, NationalizeResponse, SuccessResponse } from "@/types";
 import { env } from "@hng-i14-task-0-david-uzondu/env/server";
 import axios, { type AxiosResponse } from "axios";
@@ -9,9 +9,10 @@ import { StatusCodes } from "http-status-codes";
 import { sql, type ValueExpression } from "kysely";
 import '@/scripts/seed-db';
 import type z from "zod";
-import { profileQuerySchema } from "@/schema/profile-query.schema";
+import { profileQuerySchema, profileSearchSchema } from "@/schema/profile-query.schema";
+import { parseSearchQuery } from "@/parser/parse-query";
 
-const app = express();
+export const app = express();
 app.use(
  cors({
   origin: env.CORS_ORIGIN,
@@ -25,16 +26,7 @@ app.get("/", (_req, res) => {
  res.status(200).send("OK");
 });
 
-class AppError extends Error {
- code: number;
- constructor({ message, code }: {
-  message: string,
-  code: number
- }) {
-  super(message)
-  this.code = code;
- }
-}
+
 
 
 app.post("/api/profiles",
@@ -122,11 +114,63 @@ app.post("/api/profiles",
    });
  });
 
-app.get('/api/profiles/:id', async (req: Request<{ id?: string }, {}, {}, {}>, res: Response<SuccessResponse | ErrorResponse>, next) => {
+app.get("/api/profiles/search", async (req: Request<{}, {}, {}, z.infer<typeof profileSearchSchema>>, res: Response<SuccessResponse | ErrorResponse>) => {
+ const { data, error } = profileSearchSchema.safeParse(req.query);
+ if (error) return res.status(StatusCodes.BAD_REQUEST).json({
+  status: 'error',
+  message: error.issues[0].message
+ })
+
+ const query = parseSearchQuery(data.q);
+ const offset = (data.page - 1) * data.limit;
+ if (Object.values(query).every(entry => entry === null)) return res.status(StatusCodes.BAD_REQUEST).json({
+  status: 'error',
+  message: "Unable to interpret query"
+ })
+
+ console.log(query)
+ const result = await db.selectFrom('profile')
+  .$if(!!query.gender, (qb) => qb.where((eb) => eb(sql`LOWER(gender::text)`, "=", query.gender.toLowerCase().trim())))
+  .$if(!!query.country_id, (qb) => qb.where((eb) => eb(sql`LOWER(country_id::text)`, "=", query.country_id.toLowerCase().trim())))
+  .$if(!!query.age_group, (qb) => qb.where((eb) => eb(sql`LOWER(age_group::text)`, "=", query.age_group.toLowerCase().trim())))
+  .$if(!!query.min_age, (qb) => qb.where('age', '>=', query.min_age))
+  .$if(!!query.max_age, (qb) => qb.where('age', '<=', query.max_age))
+  .$if(!!query.min_country_probability, (qb) => qb.where('country_probability', '>=', query.min_country_probability))
+  .$if(!!query.min_gender_probability, (qb) => qb.where('gender_probability', '>=', query.min_gender_probability))
+  .$if(!!query.order, (qb) => qb.orderBy('age', query.order))
+  .$if(!!data.page, (qb) => qb.offset(offset).limit(data.limit))
+  .$if(!!data.limit, (qb) => qb.limit(data.limit))
+  .selectAll()
+  .select(({ eb }) => [eb.fn.count("id").over().as('total')])
+  .execute()
+
+ return res.status(StatusCodes.OK).json({
+  // count: result.length,
+  total: Number(result[0]?.total) ?? 0,
+  data: result.map(r => ({
+   age: r.age,
+   age_group: r.age_group,
+   country_id: r.country_id,
+   id: r.id,
+   name: r.name,
+   gender: r.gender,
+   created_at: r.created_at,
+   gender_probability: r.gender_probability,
+   country_probability: r.country_probability,
+   country_name: r.country_name,
+  })),
+  status: 'success'
+ })
+
+});
+
+app.get('/api/profiles/:id', async (req: Request<{ id?: string }, {}, {}, {}>, res: Response<SuccessResponse | ErrorResponse>) => {
  const id = req.params.id;
  const result = await db.selectFrom('profile').where('id', '=', id).selectAll().executeTakeFirstOrThrow(() => {
   throw new AppError({ message: 'Failed to get profile', code: StatusCodes.NOT_FOUND });
  });
+
+ // throw new AppError({ message: 'Failed to get profile', code: StatusCodes.NOT_FOUND });
  delete result.updated_at;
  return res.status(StatusCodes.OK).json({
   data: result,
@@ -134,7 +178,7 @@ app.get('/api/profiles/:id', async (req: Request<{ id?: string }, {}, {}, {}>, r
  })
 });
 
-app.get('/api/profiles/', async (req: Request<{}, {}, {}, z.infer<typeof profileQuerySchema>>, res: Response<SuccessResponse | ErrorResponse>, next) => {
+app.get('/api/profiles/', async (req: Request<{}, {}, {}, z.infer<typeof profileQuerySchema>>, res: Response<SuccessResponse | ErrorResponse>) => {
  // const { gender, country_id, age_group } = req.query;
 
  const { data: query, error } = profileQuerySchema.safeParse(req.query);
@@ -160,10 +204,9 @@ app.get('/api/profiles/', async (req: Request<{}, {}, {}, z.infer<typeof profile
   .select(({ eb }) => [eb.fn.count("id").over().as('total')])
   .execute()
 
- console.log(result)
  return res.status(StatusCodes.OK).json({
   // count: result.length,
-  total: Number(result[0].total),
+  total: Number(result[0]?.total) ?? 0,
   data: result.map(r => ({
    age: r.age,
    age_group: r.age_group,
@@ -175,7 +218,7 @@ app.get('/api/profiles/', async (req: Request<{}, {}, {}, z.infer<typeof profile
    gender_probability: r.gender_probability,
    country_probability: r.country_probability,
    country_name: r.country_name,
-   
+
   })),
   status: 'success'
  })
@@ -185,6 +228,8 @@ app.delete('/api/profiles/:id', (req: Request<{ id: string }>, res, next) => {
  db.deleteFrom('profile').where('id', '=', req.params.id).returning(['id']).executeTakeFirstOrThrow(() => {
   throw new AppError({ message: "Failed to delete profile with ID", code: StatusCodes.NOT_FOUND })
  })
+
+  // throw new AppError({ message: "Failed to delete profile with ID", code: StatusCodes.NOT_FOUND })
  return res.status(StatusCodes.NO_CONTENT).json();
 })
 

@@ -4,7 +4,6 @@ import "dotenv/config";
 import { defineConfig } from "prisma/config";
 import path from 'path';
 
-// console.log(path.resolve(process.cwd(), 'apps', 'server', 'src', 'db', 'prisma', "schema.prisma"))
 export default defineConfig({
  schema: "./src/prisma/schema.prisma",
  migrations: {
