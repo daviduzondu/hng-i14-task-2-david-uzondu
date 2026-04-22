@@ -68,13 +68,7 @@ All profiles are stored in a `profiles` table with the following structure:
 
 ## Data seeding
 
-The database is pre-seeded with **2026 profiles**. To seed:
-
-```bash
-pnpm run seed
-```
-
-Re-running the seed is safe — it uses upsert logic and will not create duplicate records.
+The database is pre-seeded with **2026 profiles**. Re-running the seed is safe. It uses upsert logic and does not create duplicate records. Seeding runs automatically when the server starts.
 
 ---
 
@@ -541,7 +535,6 @@ hng-i14-task-0-david-uzondu/
 - `pnpm run dev` – Start development server with hot reload
 - `pnpm run start` – Start production server
 - `pnpm run build` – Compile TypeScript
-- `pnpm run seed` – Seed the database with 2026 profiles
 - `pnpm run check` – Lint and format code
 
 ---
