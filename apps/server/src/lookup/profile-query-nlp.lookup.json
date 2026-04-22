@@ -5,7 +5,8 @@
   "no younger than #Value",
   "age starting at #Value",
   "from age #Value",
-  "aged #Value"
+  "aged #Value",
+  "above #Value"
  ],
  "max_age": [
   "up to #Value",
@@ -13,7 +14,8 @@
   "(no older than) #Value",
   "(max|maximum) age (is|of|up to|at)? #Value",
   "at most #Value years old?",
-  "to age? #Value"
+  "to age? #Value",
+  "below #Value"
  ],
  "min_gender_probability": [
   "(gender confidence|gender certainty|gender probability|gender_probability) (of at least|starting at) #Value",
