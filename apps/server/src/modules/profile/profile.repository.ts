@@ -1,12 +1,14 @@
 import { db } from "@/db/db";
 import type { AgeGroup, DB } from "@/db/generated/types";
 import type { profileQuerySchema } from "@/schema/profile-query.schema";
-import type { AgifyResponse, GenderizeResponse, NationalizeResponse } from "@/types";
+import type { AgifyResponse, GenderizeResponse, NationalizeResponse } from "@/misc/types";
 import { sql, type ValueExpression } from "kysely";
 import type z from "zod";
 
 export const findProfileById = async (id: string) => await db.selectFrom('profile').where('id', '=', id).selectAll().executeTakeFirstOrThrow();
+
 export const deleteProfileById = async (id: string) => await db.deleteFrom('profile').where('id', '=', id).returning(['id']).executeTakeFirstOrThrow()
+
 export const findProfileByName = async (name: string) => await db.selectFrom('profile')
  .where((eb) => eb(sql`LOWER(TRIM(name))`, "=", name.toLowerCase().trim()))
  .selectAll()
@@ -31,7 +33,7 @@ export const createNewProfile = async ({ age, name, country, gender, probability
  .returningAll()
  .executeTakeFirst();
 
-export const filterProfiles = async (query: z.infer<typeof profileQuerySchema> & { page: number, offset: number }) => await db.selectFrom('profile')
+export const filterProfiles = async (query: z.infer<typeof profileQuerySchema> & { offset?: number }) => await db.selectFrom('profile')
  .$if(!!query.gender, (qb) => qb.where((eb) => eb(sql`LOWER(gender::text)`, "=", query.gender.toLowerCase().trim())))
  .$if(!!query.country_id, (qb) => qb.where((eb) => eb(sql`LOWER(country_id::text)`, "=", query.country_id.toLowerCase().trim())))
  .$if(!!query.age_group, (qb) => qb.where((eb) => eb(sql`LOWER(age_group::text)`, "=", query.age_group.toLowerCase().trim())))
@@ -39,7 +41,9 @@ export const filterProfiles = async (query: z.infer<typeof profileQuerySchema> &
  .$if(!!query.max_age, (qb) => qb.where('age', '<=', query.max_age))
  .$if(!!query.min_country_probability, (qb) => qb.where('country_probability', '>=', query.min_country_probability))
  .$if(!!query.min_gender_probability, (qb) => qb.where('gender_probability', '>=', query.min_gender_probability))
- .$if(!!query.order, (qb) => qb.orderBy('age', query.order))
+ .$if(!!query.sort_by, (qb) =>
+  qb.orderBy(query.sort_by, query.order ?? "asc")
+ )
  .$if(!!query.page, (qb) => qb.offset(query.offset).limit(query.limit))
  .$if(!!query.limit, (qb) => qb.limit(query.limit))
  .selectAll()

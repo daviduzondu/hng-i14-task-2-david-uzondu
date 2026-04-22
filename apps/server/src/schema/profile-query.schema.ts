@@ -1,3 +1,4 @@
+import { AgeGroup } from "@/db/generated/types";
 import { z } from "zod";
 
 // enum Gender {
@@ -14,9 +15,7 @@ export const profileQuerySchema = z.object({
   error: "country_id must be a string",
  }).optional(),
 
- age_group: z.string({
-  error: "age_group must be a string",
- }).optional(),
+ age_group: z.enum(AgeGroup).optional(),
 
  min_age: z.coerce.number({
   error: "min_age must be a number",
@@ -70,17 +69,26 @@ export const profileQuerySchema = z.object({
   .max(50, { error: "limit cannot exceed 50" })
   .default(10)
   .optional(),
-});
+}).refine(
+ (data) => {
+  if (data.min_age !== undefined && data.max_age !== undefined) {
+   return data.max_age >= data.min_age;
+  }
+  return true;
+ }, {
+ message: "max_age cannot be lower than min_age",
+ path: ["max_age"],
+}
+)
 
 export const profileSearchSchema = z.object({
  q: z.string({ error: "Your search query must have at least 5 characters" }).min(5, { error: "Your search query must have at least 5 characters" }),
-  page: z.coerce.number({
+ page: z.coerce.number({
   error: "page must be a number",
  })
   .int({ error: "page must be an integer" })
   .min(1, { error: "page must be >= 1" })
-  .default(1)
-  .optional(),
+  .default(1),
 
  limit: z.coerce.number({
   error: "limit must be a number",
@@ -89,5 +97,4 @@ export const profileSearchSchema = z.object({
   .min(1, { error: "limit must be >= 1" })
   .max(50, { error: "limit cannot exceed 50" })
   .default(10)
-  .optional(),
 })

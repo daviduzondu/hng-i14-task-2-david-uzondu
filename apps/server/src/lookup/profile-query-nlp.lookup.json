@@ -11,7 +11,7 @@
   "up to #Value",
   "no! younger than #Value",
   "(no older than) #Value",
-  "(max|maximum) age (is|of|up to)? #Value",
+  "(max|maximum) age (is|of|up to|at)? #Value",
   "at most #Value years old?",
   "to age? #Value"
  ],
@@ -90,13 +90,16 @@
  },
  "sort_by": {
   "age": [
-   "(sort|group|arrange) by age"
+   "(sort|group|arrange) by age",
+   "(sorted|grouped|arranged) by age"
   ],
   "created_at": [
-   "(sort|group|arrange) by created at"
+   "(sort|group|arrange) by created at",
+   "(sorted|grouped|arranged) by created at"
   ],
   "gender_probability": [
-   "(sort|group|arrange) by (gender confidence|gender certainty|gender probability|gender_probability)"
+   "(sort|group|arrange) by (gender confidence|gender certainty|gender probability|gender_probability)",
+   "(sorted|grouped|arranged) by (gender confidence|gender certainty|gender probability|gender_probability)"
   ]
  },
  "order": {
