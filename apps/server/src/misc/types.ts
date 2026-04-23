@@ -27,6 +27,8 @@ export type SuccessData = Omit<Updateable<profile>, 'updated_at'> | Omit<Updatea
 export interface SuccessResponse {
  status: 'success';
  total?: number;
+ page?: number;
+ limit?: number;
  message?: string;
  count?: number,
  data: SuccessData

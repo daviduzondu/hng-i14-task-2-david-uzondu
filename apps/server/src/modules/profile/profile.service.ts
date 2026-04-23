@@ -76,6 +76,8 @@ export async function searchProfiles(payload: z.infer<typeof profileSearchSchema
  return {
   body: {
    // count: result.length,
+   page: parsedPayload.page,
+   limit: parsedPayload.limit,
    total: Number(result[0]?.total ?? 0) ?? 0,
    data: result.map(r => ({
     age: r.age,
@@ -122,7 +124,9 @@ export async function getProfiles(query: z.infer<typeof profileQuerySchema>): St
 
  return {
   body: {
-   data: result.map(r => ({ ...r, updated_at: undefined, total: undefined })),
+   page: parsedQuery.page,
+   limit: parsedQuery.limit,
+   data: result.map(r => ({ ...r, updated_at: undefined, total: undefined }) as Partial<typeof r>),
    total: Number(result[0]?.total ?? 0) ?? 0,
    status: 'success'
   },
