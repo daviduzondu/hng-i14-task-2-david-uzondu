@@ -42,8 +42,8 @@ export const createNewProfile = async ({
   name: string;
   country: string;
   gender: Gender;
-  gender_probability: number;
-  country_probability: number
+  gender_probability?: number;
+  country_probability?: number;
 }) =>
   await db
     .insertInto("profile")
@@ -56,9 +56,9 @@ export const createNewProfile = async ({
         return "senior";
       })(age),
       country_id: country,
-      country_probability: country_probability,
+      country_probability: country_probability ?? 1,
       gender: gender,
-      gender_probability: gender_probability,
+      gender_probability: gender_probability ?? 1,
       name: name,
     })
     .returningAll()
