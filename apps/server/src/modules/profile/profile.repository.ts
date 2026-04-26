@@ -8,6 +8,7 @@ import type {
 } from "@/misc/types";
 import { sql, type ValueExpression } from "kysely";
 import type z from "zod";
+import { countries } from "@/lookup/country-code.lookup.json";
 
 export const findProfileById = async (id: string) =>
   await db
@@ -55,7 +56,12 @@ export const createNewProfile = async ({
         if (age <= 59) return "adult";
         return "senior";
       })(age),
-      country_id: country,
+      country_id: country.toUpperCase(),
+      country_name: (() => {
+        const name = countries.find((c) => c.code === country).name;
+        if (!!name) return name;
+        else throw new Error("Could not match country with given ID");
+      })(),
       country_probability: country_probability ?? 1,
       gender: gender,
       gender_probability: gender_probability ?? 1,
